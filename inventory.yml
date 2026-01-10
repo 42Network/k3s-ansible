@@ -1,0 +1,55 @@
+---
+k3s_cluster:
+  children:
+    # -------------------------------------------------------
+    # 1. K3s Control Plane (Servers)
+    # -------------------------------------------------------
+    server:
+      hosts:
+        marconi1:
+          ansible_host: 10.203.248.231
+        marconi2:
+          ansible_host: 10.203.248.232
+        marconi3:
+          ansible_host: 10.203.248.233
+
+    # -------------------------------------------------------
+    # 2. K3s Workers (Agents)
+    # -------------------------------------------------------
+    agent:
+      hosts:
+        marconi4:
+          ansible_host: 10.203.248.234
+        marconi5:
+          ansible_host: 10.203.248.235
+        marconi6:
+          ansible_host: 10.203.248.236
+        marconi7:
+          ansible_host: 10.203.248.237
+        marconi8:
+          ansible_host: 10.203.248.238
+
+    # -------------------------------------------------------
+    # 3. InfiniBand Managers (Running on Control Plane nodes)
+    # -------------------------------------------------------
+    ib_managers:
+      hosts:
+        # OpenSM Master (Priority 10)
+        marconi1:
+          ansible_host: 10.203.248.231
+          sm_priority: 10
+        # OpenSM Backup (Priority 5)
+        marconi2:
+          ansible_host: 10.203.248.232
+          sm_priority: 5
+
+  # ---------------------------------------------------------
+  # Global Variables
+  # ---------------------------------------------------------
+  vars:
+    ansible_port: 22
+    ansible_user: openlab
+    k3s_version: v1.31.12+k3s1
+    token: "changeme!"
+    # This automatically picks the IP of the first server (marconi1) as the API endpoint
+    api_endpoint: "{{ hostvars[groups['server'][0]]['ansible_host'] | default(groups['server'][0]) }}"

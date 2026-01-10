@@ -1,0 +1,9 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Add Ansible SSH public key
+      authorized_key:
+        user: openlab
+        state: present
+        key: "{{ lookup('file', '~/.ssh/id_ansible.pub') }}"

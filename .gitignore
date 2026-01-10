@@ -2,7 +2,7 @@ venv
 .venv
 .vscode
 .vagrant
-inventory.yml
+# inventory.yml
 playbook/debug.yml
 .ansible/
 PR_DESCRIPTION.md

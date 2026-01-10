@@ -1,0 +1,117 @@
+---
+- name: Configure InfiniBand (Robust Connected Mode)
+  hosts: k3s_cluster
+  become: true
+  vars:
+    ib_subnet_prefix: "10.203.249"
+
+  tasks:
+    # ---------------------------------------------------------
+    # 1. PRE-FLIGHT & TOOLS
+    # ---------------------------------------------------------
+    - name: Install InfiniBand Tools & iperf
+      apt:
+        name: [rdma-core, infiniband-diags, ibutils, perftest, iperf, iperf3]
+        state: present
+        update_cache: yes
+
+    - name: Tune Sysctl for High Speed Networking
+      sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        state: present
+        sysctl_file: /etc/sysctl.d/99-infiniband-tuning.conf
+        reload: yes
+      loop:
+        - { key: 'net.core.rmem_max', value: '16777216' }
+        - { key: 'net.core.wmem_max', value: '16777216' }
+        - { key: 'net.ipv4.tcp_rmem', value: '4096 87380 16777216' }
+        - { key: 'net.ipv4.tcp_wmem', value: '4096 65536 16777216' }
+        - { key: 'net.ipv4.tcp_no_metrics_save', value: '1' }
+
+    - name: Load InfiniBand Kernel Modules
+      modprobe:
+        name: "{{ item }}"
+        state: present
+      loop: [mlx4_ib, ib_ipoib, ib_umad]
+
+    - name: Persist Modules on Boot
+      copy:
+        dest: /etc/modules-load.d/infiniband.conf
+        content: "mlx4_ib\nib_ipoib\nib_umad\n"
+
+    # ---------------------------------------------------------
+    # 2. DISCOVERY
+    # ---------------------------------------------------------
+    - name: Find the InfiniBand Interface Name
+      shell: "ls /sys/class/net/ | grep -E 'ib[0-9].*|ibp.*' | head -n 1"
+      register: ib_interface_find
+      changed_when: false
+
+    - name: Set IB Interface Fact
+      set_fact:
+        ib_iface: "{{ ib_interface_find.stdout }}"
+
+    - name: Calculate IB IP Address
+      set_fact:
+        host_last_octet: "{{ ansible_default_ipv4.address.split('.')[-1] }}"
+
+    # ---------------------------------------------------------
+    # 3. FORCE MODE & PERSISTENCE
+    # ---------------------------------------------------------
+    - name: Create udev rule to force Connected Mode
+      copy:
+        dest: /etc/udev/rules.d/99-infiniband-mode.rules
+        content: |
+          ACTION=="add", SUBSYSTEM=="net", KERNEL=="ib*", ATTR{mode}="connected"
+          ACTION=="add", SUBSYSTEM=="net", KERNEL=="ibp*", ATTR{mode}="connected"
+      notify: Reload Udev
+
+    # ---------------------------------------------------------
+    # 4. THE "HARD BOUNCE" FIX
+    # ---------------------------------------------------------
+    # This block checks if the interface is in Datagram mode OR has the wrong MTU
+    # If either is true, it rips the interface down and rebuilds it.
+    - name: Check Current IB Mode and MTU
+      shell: |
+        MODE=$(cat /sys/class/net/{{ ib_iface }}/mode)
+        MTU=$(cat /sys/class/net/{{ ib_iface }}/mtu)
+        if [ "$MODE" != "connected" ] || [ "$MTU" -lt "65000" ]; then
+          echo "fix_needed"
+        else
+          echo "ok"
+        fi
+      register: ib_status_check
+      changed_when: false
+
+    - name: Apply Hard Bounce (Down/Mode/MTU/Up)
+      shell: |
+        ip link set {{ ib_iface }} down
+        echo connected > /sys/class/net/{{ ib_iface }}/mode
+        ip link set {{ ib_iface }} mtu 65520
+        ip link set {{ ib_iface }} up
+      when: ib_status_check.stdout == "fix_needed"
+
+    # ---------------------------------------------------------
+    # 5. NETPLAN CONFIG
+    # ---------------------------------------------------------
+    - name: Configure Netplan
+      copy:
+        dest: /etc/netplan/99-infiniband.yaml
+        content: |
+          network:
+            version: 2
+            ethernets:
+              {{ ib_iface }}:
+                dhcp4: false
+                mtu: 65520
+                addresses:
+                  - {{ ib_subnet_prefix }}.{{ host_last_octet }}/24
+      notify: Apply Netplan
+
+  handlers:
+    - name: Reload Udev
+      shell: udevadm control --reload-rules && udevadm trigger
+
+    - name: Apply Netplan
+      command: netplan apply
