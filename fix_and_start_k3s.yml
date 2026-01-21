@@ -1,0 +1,25 @@
+---
+- name: Fix Networking and Start K3s
+  hosts: k3s_cluster
+  become: true
+  tasks:
+    - name: Update /etc/hosts to point registry to Marconi2
+      lineinfile:
+        path: /etc/hosts
+        regexp: '.*k8s-registry.local'
+        line: '10.203.248.232    k8s-registry.local'
+        state: present
+
+    - name: Enable and Start K3s Server
+      service:
+        name: k3s
+        state: started
+        enabled: yes
+      when: "'server' in group_names"
+
+    - name: Enable and Start K3s Agent
+      service:
+        name: k3s-agent
+        state: started
+        enabled: yes
+      when: "'agent' in group_names"

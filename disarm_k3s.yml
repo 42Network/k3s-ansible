@@ -1,0 +1,21 @@
+---
+- name: Disarm K3s (Stop and Disable)
+  hosts: k3s_cluster
+  become: true
+  ignore_unreachable: true
+  tasks:
+    - name: Stop and Disable K3s Server
+      service:
+        name: k3s
+        state: stopped
+        enabled: no
+      when: "'server' in group_names"
+      ignore_errors: true
+
+    - name: Stop and Disable K3s Agent
+      service:
+        name: k3s-agent
+        state: stopped
+        enabled: no
+      when: "'agent' in group_names"
+      ignore_errors: true

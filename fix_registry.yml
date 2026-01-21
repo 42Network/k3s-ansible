@@ -1,0 +1,29 @@
+---
+- name: Configure K3s Insecure Registry
+  hosts: k3s_cluster
+  become: true
+  tasks:
+    - name: Create registries.yaml
+      copy:
+        dest: /etc/rancher/k3s/registries.yaml
+        content: |
+          mirrors:
+            "10.203.248.232:30500":
+              endpoint:
+                - "http://10.203.248.232:30500"
+            "k8s-registry.local:30500":
+              endpoint:
+                - "http://10.203.248.232:30500"
+        mode: '0644'
+
+    - name: Restart k3s status
+      service:
+        name: k3s
+        state: restarted
+      when: "'server' in group_names"
+    
+    - name: Restart k3s-agent status
+      service:
+        name: k3s-agent
+        state: restarted
+      when: "'agent' in group_names"
