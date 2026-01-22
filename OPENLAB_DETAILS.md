@@ -68,6 +68,7 @@ We use a streamlined set of playbooks to manage the lifecycle:
     -   **Server Setup:** Bootstraps the first node (`marconi3`), then joins the other two.
     -   **Agent Setup:** Joins the 20 worker nodes.
 3.  **`fix_registry.yml`**: Post-install configuration to inject the private registry mirror settings.
+4.  **`configure_bmc.yml`**: Pushes node identity (Host Name and OS Version) down to the IPMI Controller (BMC). This enables "reverse discovery" of hardware.
 
 ### Private Registry
 The cluster is configured to pull images from a local Synology NAS to avoid Docker Hub rate limits and speed up deployments.

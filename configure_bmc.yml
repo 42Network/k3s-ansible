@@ -1,0 +1,45 @@
+---
+- name: Push Metadata to BMC (Baseboard Management Controller)
+  hosts: k3s_cluster
+  become: true
+  gather_facts: true
+  
+  tasks:
+    - name: Install ipmitool
+      package:
+        name: ipmitool
+        state: present
+
+    - name: Ensure OpenIPMI kernel modules are loaded
+      modprobe:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - ipmi_msghandler
+        - ipmi_devintf
+        - ipmi_si
+      # Continue even if modules fail (some hardware might use different drivers or be virtual)
+      ignore_errors: true
+
+    - name: Check if IPMI device exists locally
+      stat:
+        path: /dev/ipmi0
+      register: ipmi_dev
+
+    - name: Configure BMC Metadata
+      block:
+        # Note: 'lan set <channel> hostname' is not supported by standard ipmitool on these versions.
+        # We rely on 'mc setsysinfo system_name' which is the IPMI 2.0 standard for identifying the system.
+
+        # 1. System Name: IPMI 2.0 spec field
+        - name: Set IPMI System Name
+          command: ipmitool mc setsysinfo system_name "{{ inventory_hostname }}"
+          ignore_errors: true
+
+        # 2. OS Name: Useful for auditing version info from OOB
+        - name: Set IPMI OS Name
+          command: ipmitool mc setsysinfo os_name "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+          ignore_errors: true
+
+      when: ipmi_dev.stat.exists
+      connection: ssh
