@@ -3,17 +3,23 @@
   hosts: k3s_cluster
   become: true
   tasks:
+    - name: Ensure /etc/rancher/k3s directory exists
+      file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: '0755'
+
     - name: Create registries.yaml
       copy:
         dest: /etc/rancher/k3s/registries.yaml
         content: |
           mirrors:
-            "10.203.248.232:30500":
+            "10.203.247.224:5050":
               endpoint:
-                - "http://10.203.248.232:30500"
-            "k8s-registry.local:30500":
+                - "http://10.203.247.224:5050"
+            "k8s-registry.local:5050":
               endpoint:
-                - "http://10.203.248.232:30500"
+                - "http://10.203.247.224:5050"
         mode: '0644'
 
     - name: Restart k3s status

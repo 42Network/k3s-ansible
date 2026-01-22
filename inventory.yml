@@ -6,18 +6,27 @@ k3s_cluster:
     # -------------------------------------------------------
     server:
       hosts:
-        # marconi1:
-        #   ansible_host: 10.203.248.231
-        marconi2:
-          ansible_host: 10.203.248.232
         marconi3:
           ansible_host: 10.203.248.233
+          extra_server_args: "--node-taint CriticalAddonsOnly=true:NoSchedule"
+        pve-teach-147:
+          ansible_host: 10.203.248.147
+          ansible_user: root
+          extra_server_args: "--node-taint CriticalAddonsOnly=true:NoSchedule"
+        pve-teach-150:
+          ansible_host: 10.203.248.150
+          ansible_user: root
+          extra_server_args: "--node-taint CriticalAddonsOnly=true:NoSchedule"
 
     # -------------------------------------------------------
     # 2. K3s Workers (Agents)
     # -------------------------------------------------------
     agent:
       hosts:
+        marconi1:
+          ansible_host: 10.203.248.231
+        marconi2:
+          ansible_host: 10.203.248.232
         marconi4:
           ansible_host: 10.203.248.234
         marconi5:
@@ -28,6 +37,19 @@ k3s_cluster:
           ansible_host: 10.203.248.237
         marconi8:
           ansible_host: 10.203.248.238
+        pve-teach-133: { ansible_host: 10.203.248.133, ansible_user: root }
+        pve-teach-134: { ansible_host: 10.203.248.134, ansible_user: root }
+        pve-teach-136: { ansible_host: 10.203.248.136, ansible_user: root }
+        pve-teach-137: { ansible_host: 10.203.248.137, ansible_user: root }
+        pve-teach-138: { ansible_host: 10.203.248.138, ansible_user: root }
+        pve-teach-139: { ansible_host: 10.203.248.139, ansible_user: root }
+        pve-teach-140: { ansible_host: 10.203.248.140, ansible_user: root }
+        pve-teach-141: { ansible_host: 10.203.248.141, ansible_user: root }
+        pve-teach-142: { ansible_host: 10.203.248.142, ansible_user: root }
+        pve-teach-143: { ansible_host: 10.203.248.143, ansible_user: root }
+        pve-teach-144: { ansible_host: 10.203.248.144, ansible_user: root }
+        pve-teach-145: { ansible_host: 10.203.248.145, ansible_user: root }
+        pve-teach-146: { ansible_host: 10.203.248.146, ansible_user: root }
 
     # -------------------------------------------------------
     # 3. InfiniBand Managers (Running on Control Plane nodes)
